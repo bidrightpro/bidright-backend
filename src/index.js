@@ -5,6 +5,7 @@ const {
   addContractor,
   findContractorByEmail
 } = require('./users');
+const { testDbConnection } = require('./db');
 
 const app = express();
 const PORT = 3000;
@@ -14,6 +15,17 @@ app.use(express.json());
 // Health check
 app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
+});
+
+// DB test route
+app.get('/db-test', async (req, res) => {
+  try {
+    const now = await testDbConnection();
+    res.json({ dbStatus: 'ok', time: now });
+  } catch (err) {
+    console.error('DB test failed:', err);
+    res.status(500).json({ dbStatus: 'error', message: err.message });
+  }
 });
 
 // Contractor signup route
@@ -98,6 +110,18 @@ app.get('/jobs', (req, res) => {
   res.json(jobs);
 });
 
+// Get a single job by id
+app.get('/jobs/:id', (req, res) => {
+  const jobId = Number(req.params.id);
+  const job = jobs.find(j => j.id === jobId);
+
+  if (!job) {
+    return res.status(404).json({ error: 'Job not found' });
+  }
+
+  res.json(job);
+});
+
 // Temporary in-memory bids storage
 const bids = [];
 
@@ -137,25 +161,9 @@ app.post('/jobs/:id/bids', (req, res) => {
 // Get all bids for a specific contractor
 app.get('/contractors/:id/bids', (req, res) => {
   const contractorId = req.params.id;
-
   const contractorBids = bids.filter(b => b.contractorId === contractorId);
-
   res.json(contractorBids);
 });
-
-
-// Get a single job by id
-app.get('/jobs/:id', (req, res) => {
-  const jobId = Number(req.params.id);
-  const job = jobs.find(j => j.id === jobId);
-
-  if (!job) {
-    return res.status(404).json({ error: 'Job not found' });
-  }
-
-  res.json(job);
-});
-
 
 // Start server
 app.listen(PORT, () => {
